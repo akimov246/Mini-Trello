@@ -16,3 +16,12 @@ HTTPExceptionInvalidToken = HTTPException(
     detail="Invalid token",
     headers={"WWW-Authenticate": "Bearer"},
 )
+
+class BoardNotFoundError(Exception):
+    pass
+
+class ListNotFoundError(Exception):
+    pass
+
+class ListInvalidNewPositionError(Exception):
+    pass

@@ -8,6 +8,7 @@ from alembic import context
 
 from app.models.user import User
 from app.models.board import Board
+from app.models.list import List
 from app.config import settings
 
 # this is the Alembic Config object, which provides
