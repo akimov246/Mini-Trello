@@ -1,0 +1,62 @@
+from sqlmodel import Session, select, func, update
+from app.database import engine
+from app.schemas.card import CardCreate, CardMove
+from app.models.user import User
+from app.models.card import Card
+from app.models.list import List
+from app.models.board import Board
+from app.crud.lists import get_list
+from app.exceptions import ListNotFoundError, CardNotFoundError
+
+
+def create_card(list_id: int, payload: CardCreate, user: User) -> Card:
+    list = get_list(list_id, user)
+    if list is None:
+        raise ListNotFoundError("List not found")
+    with Session(engine) as session:
+        cards_in_list_len = session.exec(
+            select(func.count())
+            .select_from(Card)
+            .where(Card.list_id == list_id)
+        ).one()
+        card = Card(
+            title=payload.title,
+            description=payload.description,
+            position=cards_in_list_len,
+            list_id=list_id,
+        )
+        session.add(card)
+        session.commit()
+        session.refresh(card)
+        return card
+
+def move_card(card_id: int, payload: CardMove, user: User):
+    with Session(engine) as session:
+        card: Card | None = session.exec(
+            select(Card)
+            .join(List)
+            .join(Board)
+            .where(Card.id == card_id)
+            .where(user.id == Board.owner_id)
+        ).one_or_none()
+        if card is None:
+            raise CardNotFoundError("Card not found")
+        if card.list_id == payload.to_list_id:
+            return card
+        cards_in_to_list_len = session.exec(
+            select(func.count())
+            .select_from(Card)
+            .where(Card.list_id == payload.to_list_id)
+        ).one()
+        session.exec(
+            update(Card)
+            .where(Card.list_id == card.list_id)
+            .where(Card.position > card.position)
+            .values(position=Card.position - 1)
+        )
+        card.position = cards_in_to_list_len
+        card.list_id = payload.to_list_id
+        session.add(card)
+        session.commit()
+        session.refresh(card)
+        return card
