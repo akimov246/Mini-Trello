@@ -12,6 +12,9 @@ class CardRead(CardBase):
     position: int
     list_id: int
 
+class CardUpdate(CardBase):
+    title: str | None = None
+
 class CardMove(BaseModel):
     to_list_id: int
 

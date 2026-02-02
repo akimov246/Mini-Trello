@@ -1,6 +1,6 @@
 from sqlmodel import Session, select, func, update
 from app.database import engine
-from app.schemas.card import CardCreate, CardMove, CardChangePosition
+from app.schemas.card import CardCreate, CardMove, CardChangePosition, CardUpdate
 from app.models.user import User
 from app.models.card import Card
 from app.models.list import List
@@ -88,6 +88,23 @@ def change_card_position(card_id: int, payload: CardChangePosition, user: User):
         card.position = payload.new_position
         session.add(card)
         session.add(other_card)
+        session.commit()
+        session.refresh(card)
+        return card
+
+def update_card(card_id: int, payload: CardUpdate, user: User):
+    with Session(engine) as session:
+        card: Card | None = session.exec(
+            select(Card)
+            .join(List)
+            .join(Board)
+            .where(Card.id == card_id)
+            .where(user.id == Board.owner_id)
+        ).one_or_none()
+        if card is None:
+            raise CardNotFoundError("Card not found")
+        update_data = payload.model_dump(exclude_unset=True)
+        card.sqlmodel_update(update_data)
         session.commit()
         session.refresh(card)
         return card
