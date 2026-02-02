@@ -28,3 +28,6 @@ class ListInvalidNewPositionError(Exception):
 
 class CardNotFoundError(Exception):
     pass
+
+class CardInvalidNewPositionError(Exception):
+    pass

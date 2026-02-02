@@ -1,12 +1,12 @@
 from sqlmodel import Session, select, func, update
 from app.database import engine
-from app.schemas.card import CardCreate, CardMove
+from app.schemas.card import CardCreate, CardMove, CardChangePosition
 from app.models.user import User
 from app.models.card import Card
 from app.models.list import List
 from app.models.board import Board
 from app.crud.lists import get_list
-from app.exceptions import ListNotFoundError, CardNotFoundError
+from app.exceptions import ListNotFoundError, CardNotFoundError, CardInvalidNewPositionError
 
 
 def create_card(list_id: int, payload: CardCreate, user: User) -> Card:
@@ -57,6 +57,37 @@ def move_card(card_id: int, payload: CardMove, user: User):
         card.position = cards_in_to_list_len
         card.list_id = payload.to_list_id
         session.add(card)
+        session.commit()
+        session.refresh(card)
+        return card
+
+def change_card_position(card_id: int, payload: CardChangePosition, user: User):
+    with Session(engine) as session:
+        card: Card | None = session.exec(
+            select(Card)
+            .join(List)
+            .join(Board)
+            .where(Card.id == card_id)
+            .where(user.id == Board.owner_id)
+        ).one_or_none()
+        if card is None:
+            raise CardNotFoundError("Card not found")
+        other_card = session.exec(
+            select(Card)
+            .join(List)
+            .join(Board)
+            .where(Board.owner_id == user.id)
+            .where(Card.list_id == card.list_id)
+            .where(Card.position == payload.new_position)
+        ).one_or_none()
+        if other_card is None:
+            raise CardInvalidNewPositionError("Invalid new position")
+        if card == other_card:
+            return card
+        other_card.position = card.position
+        card.position = payload.new_position
+        session.add(card)
+        session.add(other_card)
         session.commit()
         session.refresh(card)
         return card

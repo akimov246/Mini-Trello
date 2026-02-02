@@ -14,3 +14,6 @@ class CardRead(CardBase):
 
 class CardMove(BaseModel):
     to_list_id: int
+
+class CardChangePosition(BaseModel):
+    new_position: int
