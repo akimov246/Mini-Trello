@@ -30,7 +30,7 @@ def create_card(list_id: int, payload: CardCreate, user: User) -> Card:
         session.refresh(card)
         return card
 
-def move_card(card_id: int, payload: CardMove, user: User):
+def move_card(card_id: int, payload: CardMove, user: User) -> Card:
     with Session(engine) as session:
         card: Card | None = session.exec(
             select(Card)
@@ -61,7 +61,7 @@ def move_card(card_id: int, payload: CardMove, user: User):
         session.refresh(card)
         return card
 
-def change_card_position(card_id: int, payload: CardChangePosition, user: User):
+def change_card_position(card_id: int, payload: CardChangePosition, user: User) -> Card:
     with Session(engine) as session:
         card: Card | None = session.exec(
             select(Card)
@@ -92,7 +92,7 @@ def change_card_position(card_id: int, payload: CardChangePosition, user: User):
         session.refresh(card)
         return card
 
-def update_card(card_id: int, payload: CardUpdate, user: User):
+def update_card(card_id: int, payload: CardUpdate, user: User) -> Card:
     with Session(engine) as session:
         card: Card | None = session.exec(
             select(Card)
@@ -108,3 +108,24 @@ def update_card(card_id: int, payload: CardUpdate, user: User):
         session.commit()
         session.refresh(card)
         return card
+
+def delete_card(card_id: int, user: User) -> bool:
+    with Session(engine) as session:
+        card: Card | None = session.exec(
+            select(Card)
+            .join(List)
+            .join(Board)
+            .where(Card.id == card_id)
+            .where(user.id == Board.owner_id)
+        ).one_or_none()
+        if card is None:
+            return False
+        session.delete(card)
+        session.exec(
+            update(Card)
+            .where(Card.list_id == card.list_id)
+            .where(Card.position > card.position)
+            .values(position=Card.position - 1)
+        )
+        session.commit()
+        return True
