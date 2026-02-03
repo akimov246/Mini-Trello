@@ -129,3 +129,14 @@ def delete_card(card_id: int, user: User) -> bool:
         )
         session.commit()
         return True
+
+def get_cards(list_id: int, user: User) -> List[Card]:
+    list = get_list(list_id, user)
+    if list is None:
+        raise ListNotFoundError("List not found")
+    with Session(engine) as session:
+        cards: List[Card] = session.exec(
+            select(Card)
+            .where(Card.list_id == list_id)
+        ).all()
+        return cards
