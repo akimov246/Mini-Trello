@@ -1,0 +1,71 @@
+services:
+  db:
+    image: postgres:18-alpine3.23
+    restart: unless-stopped
+    expose:
+      - "5432"
+    env_file:
+      - .env
+    volumes:
+      - type: volume
+        source: mini-trello-db
+        target: /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+      start_interval: 1s
+    networks:
+      - backend-net
+
+  migrations:
+    build: .
+    image: mini-trello:v1.0
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - DATABASE_HOST=db
+    command: ["alembic", "upgrade", "head"]
+    networks:
+      - backend-net
+
+  app:
+    image: mini-trello:v1.0
+    restart: unless-stopped
+    expose:
+      - "8000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_HOST=db
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    networks:
+      - backend-net
+      - frontend-net
+
+  nginx:
+    build:
+      context: nginx/
+    image: nginx:mini-trello
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - app
+    networks:
+      - frontend-net
+
+volumes:
+  mini-trello-db:
+
+networks:
+  backend-net:
+  frontend-net:

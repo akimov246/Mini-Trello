@@ -12,5 +12,7 @@ ENV PYTHONPATH=/app
 # Альтернатива флагу в командной строке. Любой pip install будет игнорировать кэш, экономя место
 ENV PIP_NO_CACHE_DIR=1
 
-COPY app ./app
+COPY alembic.ini ./
+COPY migrations/ ./migrations/
+COPY app/ ./app/
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
